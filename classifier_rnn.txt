@@ -1,0 +1,47 @@
+import tensorflow as tf 
+import numpy as np 
+import pandas as pd
+
+tf.reset_default_graph() 
+train = pd.read_csv('C:/Users/Python/Desktop/simple_train.csv', header=None) 
+tr = train.values 
+def new_sample(A): 
+    d = len(A[0,:]) 
+    e = np.random.choice(d-5) 
+    return A[:,e:(e+5)].transpose().reshape(1,5,4), A[:,(e+1):(e+6)].transpose().reshape(1,5,4)
+
+n_neurons = 50
+n_inputs = 4 
+n_outputs = 4 
+n_steps = 5
+learning_rate = 0.001
+ 
+X = tf.placeholder(tf.float32, [None, n_steps, n_inputs]) 
+y = tf.placeholder(tf.float32, [None, n_steps, n_outputs])
+
+cell = tf.contrib.rnn.OutputProjectionWrapper(tf.contrib.rnn.BasicRNNCell(num_units = n_neurons, activation=tf.nn.relu), output_size = n_outputs)
+rnn_outputs, states = tf.nn.dynamic_rnn(cell, X, dtype = tf.float32)
+
+sig_outputs = tf.layers.dense(rnn_outputs, n_outputs, activation=tf.nn.sigmoid)
+#loss = tf.losses.softmax_cross_entropy(y,rnn_outputs)
+#loss = tf.reduce_mean(tf.square(sig_outputs - y))
+loss = tf.losses.log_loss(y,sig_outputs)
+optimizer = tf.train.AdamOptimizer(learning_rate = learning_rate) 
+training_op = optimizer.minimize(loss)
+
+init = tf.global_variables_initializer()
+
+n_iterations = 1000
+batchsize = 1
+
+with tf.Session() as sess: 
+    init.run() 
+    for iteration in range(n_iterations): 
+        X_batch, y_batch = new_sample(tr) 
+        sess.run(training_op, feed_dict = {X: X_batch, y: y_batch})
+        rr = sess.run(loss, feed_dict = {X:X_batch, y:y_batch})
+        print(rr)
+    X_new, y_new = new_sample(tr) 
+    y_pred = sess.run(sig_outputs, feed_dict = {X:X_new}) 
+    print(y_new) 
+    print(y_pred)
